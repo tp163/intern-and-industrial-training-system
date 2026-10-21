@@ -64,6 +64,14 @@ export interface Student extends User {
   allocationStatus?: AllocationStatus;
   departmentCode?: string;
   batch?: string;
+  /** Salutation: "Mr." or "Mrs." */
+  gender?: string;
+  /** e.g. "2020/2021" */
+  academicYear?: string;
+  /** Internship duration — start date (YYYY-MM-DD) */
+  internshipStartDate?: string;
+  /** Internship duration — end date (YYYY-MM-DD) */
+  internshipEndDate?: string;
   internshipStatus?: InternshipPlacementStatus;
   internshipCompany?: string;
   internshipRole?: string;
@@ -146,6 +154,9 @@ export interface Review {
   content: string;
   feedback?: string;
   score?: number;
+  /** Additional information attached to a daily entry (any file format) */
+  attachmentUrl?: string;
+  attachmentName?: string;
 }
 
 export interface LogbookReport {
@@ -252,4 +263,51 @@ export interface SystemSetting {
   value: string | boolean | number;
   type: "text" | "boolean" | "number" | "select";
   options?: string[];
+}
+
+/** Form C — Details of Industrial Training Completed */
+export interface FormCData {
+  traineeName: string;
+  registrationNumber: string;
+  emailAddress: string;
+  contactAddress: string;
+  contactTelephone: string;
+  residentialAddress: string;
+  residentialTelephone: string;
+  trainingStage: "first_time" | "repeat";
+  periodFrom: string;
+  periodTo: string;
+  trainingEstablishment: string;
+  trainingDescription: Array<{
+    division: string;
+    durationWeeks: string;
+    natureOfTraining: string;
+    certifyingOfficer: string;
+  }>;
+  workComments: string;
+  conductComments: string;
+  attendanceComments: string;
+  authorisedLeaveDays: string;
+  unauthorisedLeaveDays: string;
+  officerInCharge: string;
+  officerDesignation: string;
+  dateSigned: string;
+}
+
+/** Generated monthly report content (personal information + daily logs) */
+export interface MonthlyReportData {
+  studentName: string;
+  registrationNumber: string;
+  program: string;
+  academicYear: string;
+  emailAddress: string;
+  telephone: string;
+  trainingEstablishment: string;
+  internshipRole: string;
+  month: string;
+  periodFrom: string;
+  periodTo: string;
+  entries: Array<{ date: string; hours: number; summary: string }>;
+  totalHours: number;
+  totalEntries: number;
 }

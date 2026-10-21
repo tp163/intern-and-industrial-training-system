@@ -38,7 +38,9 @@ export default function AdminConductPage() {
     if (active === "absence_reports") return `${String(record.absence_dates)}\n${String(record.reason)}`;
     if (active === "placement_change_requests") return `${String(record.proposed_organization || "Organization not specified")}\n${String(record.reason)}\n${String(record.supporting_notes || "")}`;
     if (active === "student_issues") return `${String(record.issue_type)} - ${String(record.severity)}\n${String(record.description)}`;
-    return `${String(record.subject || "Message")}\n${String(record.message)}`;
+    const role = record.recipient_role ? String(record.recipient_role).replace("_", " ") : "supervisor";
+    const email = record.recipient_email && !record.recipient_id ? ` (${String(record.recipient_email)})` : "";
+    return `To: ${role}${email}\n${String(record.subject || "Message")}\n${String(record.message)}`;
   };
 
   const saveReview = async (record: RecordRow) => {

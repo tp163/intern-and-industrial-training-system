@@ -6,6 +6,7 @@ import { TableScroll } from "@/components/ui/table-scroll";
 import { SearchBar } from "@/components/ui/search-bar";
 import { useAppStore } from "@/lib/store/app-store";
 import { apiCreateUser, apiUpdateUser, apiDeleteUser } from "@/lib/api";
+import { authFetch } from "@/lib/auth-fetch";
 import { digitsOnly, formFieldClassNames, getInitials, isValidEmail, isValidPhone } from "@/lib/utils";
 
 const isValidPassword = (v: string) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(v);
@@ -14,7 +15,9 @@ import type { Supervisor } from "@/types";
 import {
   Avatar,
   Button,
+  Chip,
   Input,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -22,8 +25,19 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/react";
-import { Eye, Pencil, Plus, Trash2, UserCheck } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Eye, Pencil, Plus, Trash2, UserCheck, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+type ExternalSupervisorRow = {
+  id: string;
+  name: string;
+  email: string;
+  title?: string | null;
+  approval_access?: boolean | null;
+  created_at?: string;
+};
 
 export default function AdminSupervisorsPage() {
   const { supervisors, addSupervisor, updateSupervisor, removeSupervisor } = useAppStore();
@@ -41,6 +55,55 @@ export default function AdminSupervisorsPage() {
     phone: "",
     password: "",
   });
+
+  // External supervisors and their approval-access toggle.
+  const [externalSupervisors, setExternalSupervisors] = useState<ExternalSupervisorRow[]>([]);
+  const [togglingAccessIds, setTogglingAccessIds] = useState<Record<string, boolean>>({});
+
+  const loadExternalSupervisors = async () => {
+    try {
+      const response = await authFetch(`${API_BASE}/users`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || "Failed to load external supervisors");
+      setExternalSupervisors(
+        (result.data ?? [])
+          .filter((user: Record<string, unknown>) => user.role === "external_supervisor")
+          .map((user: Record<string, unknown>) => ({
+            id: String(user.id),
+            name: String(user.name ?? ""),
+            email: String(user.email ?? ""),
+            title: (user.title as string | null) ?? null,
+            approval_access: (user.approval_access as boolean | null) ?? null,
+            created_at: user.created_at ? String(user.created_at) : undefined,
+          }))
+      );
+    } catch (err) {
+      notifyError("Failed to load external supervisors: " + (err instanceof Error ? err.message : "Unknown error"));
+    }
+  };
+
+  useEffect(() => {
+    void loadExternalSupervisors();
+  }, []);
+
+  const toggleApprovalAccess = async (row: ExternalSupervisorRow, nextValue: boolean) => {
+    setTogglingAccessIds((prev) => ({ ...prev, [row.id]: true }));
+    try {
+      await apiUpdateUser(row.id, { approval_access: nextValue });
+      setExternalSupervisors((prev) =>
+        prev.map((item) => (item.id === row.id ? { ...item, approval_access: nextValue } : item))
+      );
+      notifySuccess(
+        nextValue
+          ? `${row.name} can now approve weekly certifications and evaluations.`
+          : `${row.name} is now view-only in the external supervisor portal.`
+      );
+    } catch (err) {
+      notifyError("Failed to update approval access: " + (err instanceof Error ? err.message : "Unknown error"));
+    } finally {
+      setTogglingAccessIds((prev) => ({ ...prev, [row.id]: false }));
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!search) return supervisors;
@@ -254,6 +317,63 @@ export default function AdminSupervisorsPage() {
           </TableBody>
         </Table>
         </TableScroll>
+        )}
+      </ContentCard>
+
+      <ContentCard title="External Supervisor Access">
+        <div className="mb-4">
+          <p className="text-sm text-text-secondary">
+            Control which external supervisors have approval rights. When approval access is turned off, the external
+            supervisor portal becomes <span className="font-medium text-text-primary">view only</span> — they can still
+            review submissions but cannot approve, certify or submit evaluations.
+          </p>
+        </div>
+        {externalSupervisors.length === 0 ? (
+          <EmptyState
+            icon={<Users size={28} />}
+            title="No external supervisors registered"
+            description="External supervisors appear here once they register or are appointed to a trainee."
+          />
+        ) : (
+          <TableScroll>
+            <Table aria-label="External supervisors access table" removeWrapper>
+              <TableHeader>
+                <TableColumn>EXTERNAL SUPERVISOR</TableColumn>
+                <TableColumn>TITLE</TableColumn>
+                <TableColumn>APPROVAL ACCESS</TableColumn>
+                <TableColumn>STATUS</TableColumn>
+              </TableHeader>
+              <TableBody>
+                {externalSupervisors.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar name={getInitials(row.name)} size="sm" color="secondary" />
+                        <div>
+                          <p className="font-medium">{row.name}</p>
+                          <p className="text-xs text-text-secondary">{row.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{row.title ?? "—"}</TableCell>
+                    <TableCell>
+                      <Switch
+                        isSelected={row.approval_access !== false}
+                        isDisabled={togglingAccessIds[row.id]}
+                        onValueChange={(nextValue) => void toggleApprovalAccess(row, nextValue)}
+                        aria-label={`Toggle approval access for ${row.name}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip variant="flat" color={row.approval_access !== false ? "success" : "default"}>
+                        {row.approval_access !== false ? "Can approve" : "View only"}
+                      </Chip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableScroll>
         )}
       </ContentCard>
 

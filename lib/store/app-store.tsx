@@ -83,6 +83,10 @@ function mapStudentRow(row: Record<string, unknown>): Student {
     allocationStatus: (allocationStatus as Student["allocationStatus"]) ?? (supervisorId ? "allocated" : "unassigned"),
     cvUrl: row.cv_url || row.cvUrl ? String(row.cv_url ?? row.cvUrl) : undefined,
     cvFileName: row.cv_file_name || row.cvFileName ? String(row.cv_file_name ?? row.cvFileName) : undefined,
+    gender: row.gender ? String(row.gender) : undefined,
+    academicYear: row.academic_year || row.academicYear ? String(row.academic_year ?? row.academicYear) : undefined,
+    internshipStartDate: row.internship_start_date || row.internshipStartDate ? String(row.internship_start_date ?? row.internshipStartDate) : undefined,
+    internshipEndDate: row.internship_end_date || row.internshipEndDate ? String(row.internship_end_date ?? row.internshipEndDate) : undefined,
     internshipMonthsCompleted: perms.internship_months_completed != null ? Number(perms.internship_months_completed) : undefined,
     internshipTotalMonths: perms.internship_total_months != null ? Number(perms.internship_total_months) : undefined,
     createdAt: String(((row.created_at ?? row.createdAt) as string ?? "").slice(0, 10)),
@@ -188,6 +192,8 @@ function mapReviewRow(row: Record<string, unknown>): Review {
     content: String(row.content ?? ""),
     feedback: row.feedback ? String(row.feedback) : undefined,
     score: row.score != null ? Number(row.score) : undefined,
+    attachmentUrl: row.attachment_url || row.attachmentUrl ? String(row.attachment_url ?? row.attachmentUrl) : undefined,
+    attachmentName: row.attachment_name || row.attachmentName ? String(row.attachment_name ?? row.attachmentName) : undefined,
   };
 }
 
@@ -265,6 +271,10 @@ const studentChangeLabels: Partial<Record<keyof Student, string>> = {
   internshipRole: "Internship role",
   internshipMonthsCompleted: "Internship months completed",
   internshipTotalMonths: "Internship total months",
+  gender: "Gender",
+  academicYear: "Academic year",
+  internshipStartDate: "Internship start date",
+  internshipEndDate: "Internship end date",
   cvFileName: "CV file",
   cvUrl: "CV link",
 };
@@ -749,6 +759,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (patch.internshipStatus !== undefined) apiPatch.internship_status = patch.internshipStatus;
       if (patch.internshipCompany !== undefined) apiPatch.internship_company = patch.internshipCompany;
       if (patch.internshipRole !== undefined) apiPatch.internship_role = patch.internshipRole;
+      if (patch.gender !== undefined) apiPatch.gender = patch.gender;
+      if (patch.academicYear !== undefined) apiPatch.academic_year = patch.academicYear;
+      if (patch.internshipStartDate !== undefined) apiPatch.internship_start_date = patch.internshipStartDate || null;
+      if (patch.internshipEndDate !== undefined) apiPatch.internship_end_date = patch.internshipEndDate || null;
       if (patch.supervisorId !== undefined) apiPatch.supervisor_id = patch.supervisorId;
       if (patch.allocationStatus !== undefined) apiPatch.allocation_status = patch.allocationStatus;
       if (Object.prototype.hasOwnProperty.call(patch, "cvUrl")) apiPatch.cv_url = patch.cvUrl ?? null;

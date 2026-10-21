@@ -6,6 +6,10 @@ const isValidEmail = (value = "") => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(va
 const isValidPhone = (value = "") => /^\d{10}$/.test(String(value));
 const isValidStudentId = (value = "") => /^\d{6}$/.test(String(value));
 const isValidGpa = (value) => value === null || value === "" || (Number(value) >= 0 && Number(value) <= 4);
+const isValidGender = (value) =>
+  value === null || value === "" || ["Mr.", "Mrs."].includes(String(value).trim());
+const isValidDateString = (value) =>
+  value === undefined || value === null || value === "" || /^\d{4}-\d{2}-\d{2}$/.test(String(value).trim());
 
 function validateUserPayload(payload) {
   if (payload.email !== undefined && !isValidEmail(payload.email)) {
@@ -19,6 +23,22 @@ function validateUserPayload(payload) {
   }
   if (payload.gpa !== undefined && !isValidGpa(payload.gpa)) {
     return "GPA must be between 0.00 and 4.00";
+  }
+  if (payload.gender !== undefined && !isValidGender(payload.gender)) {
+    return "Gender must be Mr. or Mrs.";
+  }
+  if (payload.academic_year !== undefined && payload.academic_year !== null && String(payload.academic_year).length > 20) {
+    return "Academic year is too long";
+  }
+  if (!isValidDateString(payload.internship_start_date) || !isValidDateString(payload.internship_end_date)) {
+    return "Internship duration dates must be valid dates (YYYY-MM-DD)";
+  }
+  if (
+    payload.internship_start_date &&
+    payload.internship_end_date &&
+    String(payload.internship_start_date) > String(payload.internship_end_date)
+  ) {
+    return "Internship start date cannot be after the end date";
   }
   const permissions = payload.permissions ?? {};
   if (
@@ -46,7 +66,8 @@ const allowedUpdateFields = new Set([
   "name", "email", "phone", "avatar_url", "faculty", "department", "department_code",
   "student_id", "program", "year", "gpa", "batch", "title", "internship_status",
   "internship_company", "internship_role", "cv_url", "cv_file_name", "supervisor_id",
-  "allocation_status", "permissions", "password",
+  "allocation_status", "permissions", "password", "gender", "academic_year",
+  "internship_start_date", "internship_end_date", "approval_access",
 ]);
 
 export const listUsers = async (req, res) => {
@@ -84,7 +105,7 @@ export const updateUser = async (req, res) => {
     }
     if (req.user.role !== "admin") {
       // Non-admin users cannot modify admin-only fields
-      for (const field of ["supervisor_id", "allocation_status"]) {
+      for (const field of ["supervisor_id", "allocation_status", "approval_access"]) {
         delete payload[field];
       }
     }
