@@ -51,6 +51,49 @@ export function isValidReportPeriod(value: string): boolean {
   return value.trim().length > 0;
 }
 
+export type FortnightHalf = "H1" | "H2";
+
+/**
+ * Interim (fortnightly) reports are filtered per half-month: the first half
+ * runs from the 1st to the 15th, the second half from the 16th to the month
+ * end — so each month yields two reporting periods.
+ */
+export function getFortnightOf(dateLike: string | Date): { key: string; monthKey: string; half: FortnightHalf } | null {
+  const date = typeof dateLike === "string" ? new Date(dateLike) : dateLike;
+  if (Number.isNaN(date.getTime())) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const half: FortnightHalf = date.getDate() <= 15 ? "H1" : "H2";
+  return { key: `${year}-${month}-${half}`, monthKey: `${year}-${month}`, half };
+}
+
+export function getFortnightLabel(key: string): string {
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  const match = /^(\d{4})-(\d{2})-(H[12])$/.exec(key);
+  if (!match) return key;
+  const [, year, month, half] = match;
+  const monthName = months[Number(month) - 1] ?? month;
+  const lastDay = new Date(Number(year), Number(month), 0).getDate();
+  return half === "H1"
+    ? `${monthName} ${year} · First Half (01–15)`
+    : `${monthName} ${year} · Second Half (16–${String(lastDay).padStart(2, "0")})`;
+}
+
+/** Human label for an academic-year style month key, e.g. "2026-10" → "October 2026". */
+export function getMonthKeyLabel(monthKey: string): string {
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  const match = /^(\d{4})-(\d{2})$/.exec(monthKey);
+  if (!match) return monthKey;
+  const [, year, month] = match;
+  return `${months[Number(month) - 1] ?? month} ${year}`;
+}
+
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const MAX_CV_BYTES = 5 * 1024 * 1024;
 

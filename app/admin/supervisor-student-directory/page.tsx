@@ -35,6 +35,7 @@ export default function AdminSupervisorStudentDirectoryPage() {
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState(ALL);
   const [batch, setBatch] = useState(ALL);
+  const [academicYear, setAcademicYear] = useState(ALL);
   const [supervisorFilter, setSupervisorFilter] = useState(ALL);
   const [expandedSupervisors, setExpandedSupervisors] = useState<Set<string>>(
     () => new Set(supervisors.map((s) => s.id))
@@ -42,7 +43,7 @@ export default function AdminSupervisorStudentDirectoryPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [confirmDeleteStudentId, setConfirmDeleteStudentId] = useState<string | null>(null);
   const [editingStudent, setEditingStudent] = useState(false);
-  const [studentForm, setStudentForm] = useState({ name: "", email: "", phone: "", departmentCode: "", batch: "", program: "", year: "", gpa: "" });
+  const [studentForm, setStudentForm] = useState({ name: "", email: "", phone: "", departmentCode: "", batch: "", academicYear: "", program: "", year: "", gpa: "" });
 
   const canDelete = currentUser?.role === "admin";
 
@@ -52,6 +53,10 @@ export default function AdminSupervisorStudentDirectoryPage() {
   );
   const batches = useMemo(
     () => [ALL, ...Array.from(new Set(students.map((s) => s.batch).filter(Boolean)))],
+    [students]
+  );
+  const academicYears = useMemo(
+    () => [ALL, ...Array.from(new Set(students.map((s) => s.academicYear).filter(Boolean)))],
     [students]
   );
 
@@ -80,20 +85,23 @@ export default function AdminSupervisorStudentDirectoryPage() {
         student.email.toLowerCase().includes(q) ||
         (student.departmentCode?.toLowerCase().includes(q) ?? false) ||
         (student.batch?.toLowerCase().includes(q) ?? false) ||
+        (student.academicYear?.toLowerCase().includes(q) ?? false) ||
         supervisorName.includes(q);
 
       const matchesDepartment =
         department === ALL || student.departmentCode === department;
       const matchesBatch = batch === ALL || student.batch === batch;
+      const matchesAcademicYear =
+        academicYear === ALL || student.academicYear === academicYear;
       const matchesSupervisor =
         supervisorFilter === ALL ||
         (supervisorFilter === "unassigned"
           ? !student.supervisorId
           : student.supervisorId === supervisorFilter);
 
-      return matchesSearch && matchesDepartment && matchesBatch && matchesSupervisor;
+      return matchesSearch && matchesDepartment && matchesBatch && matchesAcademicYear && matchesSupervisor;
     });
-  }, [students, search, department, batch, supervisorFilter, supervisorMap]);
+  }, [students, search, department, batch, academicYear, supervisorFilter, supervisorMap]);
 
   const groupedBySupervisor = useMemo(() => {
     return supervisors.map((supervisor) => ({
@@ -114,8 +122,8 @@ export default function AdminSupervisorStudentDirectoryPage() {
   };
 
   const closeModal = () => { setSelectedStudent(null); setEditingStudent(false); };
-  const openStudent = (student: Student) => { setSelectedStudent(student); setEditingStudent(false); setStudentForm({ name: student.name, email: student.email, phone: student.phone ?? "", departmentCode: student.departmentCode ?? "", batch: student.batch ?? "", program: student.program ?? "", year: String(student.year ?? ""), gpa: student.gpa == null ? "" : String(student.gpa) }); };
-  const saveStudent = () => { if (!selectedStudent || !studentForm.name.trim() || !studentForm.email.trim()) return notifyError("Student name and email are required."); const patch = { name: studentForm.name.trim(), email: studentForm.email.trim(), phone: studentForm.phone.trim() || undefined, departmentCode: studentForm.departmentCode.trim() || undefined, batch: studentForm.batch.trim() || undefined, program: studentForm.program.trim() || selectedStudent.program, year: studentForm.year ? Number(studentForm.year) : selectedStudent.year, gpa: studentForm.gpa ? Number(studentForm.gpa) : undefined }; updateStudentRecord(selectedStudent.id, patch, "student details"); setSelectedStudent({ ...selectedStudent, ...patch }); setEditingStudent(false); notifySuccess("Student details updated."); };
+  const openStudent = (student: Student) => { setSelectedStudent(student); setEditingStudent(false); setStudentForm({ name: student.name, email: student.email, phone: student.phone ?? "", departmentCode: student.departmentCode ?? "", batch: student.batch ?? "", academicYear: student.academicYear ?? "", program: student.program ?? "", year: String(student.year ?? ""), gpa: student.gpa == null ? "" : String(student.gpa) }); };
+  const saveStudent = () => { if (!selectedStudent || !studentForm.name.trim() || !studentForm.email.trim()) return notifyError("Student name and email are required."); const patch = { name: studentForm.name.trim(), email: studentForm.email.trim(), phone: studentForm.phone.trim() || undefined, departmentCode: studentForm.departmentCode.trim() || undefined, batch: studentForm.batch.trim() || undefined, academicYear: studentForm.academicYear.trim() || undefined, program: studentForm.program.trim() || selectedStudent.program, year: studentForm.year ? Number(studentForm.year) : selectedStudent.year, gpa: studentForm.gpa ? Number(studentForm.gpa) : undefined }; updateStudentRecord(selectedStudent.id, patch, "student details"); setSelectedStudent({ ...selectedStudent, ...patch }); setEditingStudent(false); notifySuccess("Student details updated."); };
 
   return (
     <div className="space-y-6">
@@ -142,7 +150,7 @@ export default function AdminSupervisorStudentDirectoryPage() {
       </div>
 
       <div className="rounded-card border border-border/60 bg-white p-4 shadow-card sm:p-6">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto_auto_auto]">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto_auto_auto_auto]">
           <div className="relative">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
@@ -156,6 +164,19 @@ export default function AdminSupervisorStudentDirectoryPage() {
               className="w-full rounded-input border border-border bg-white py-2.5 pl-10 pr-4 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
+          <Select
+            aria-label="Academic year filter"
+            selectedKeys={[academicYear]}
+            onSelectionChange={(keys) => setAcademicYear((Array.from(keys)[0] as string) ?? ALL)}
+            variant="bordered"
+            radius="lg"
+            className="min-w-[160px]"
+            classNames={{ trigger: "border-border bg-white" }}
+          >
+            {academicYears.map((year) => (
+              <SelectItem key={year}>{year === ALL ? "All Academic Years" : year}</SelectItem>
+            ))}
+          </Select>
           <Select
             aria-label="Department filter"
             selectedKeys={[department]}
@@ -355,12 +376,13 @@ export default function AdminSupervisorStudentDirectoryPage() {
         footer={editingStudent ? <><Button variant="light" onPress={() => setEditingStudent(false)}>Cancel</Button><Button color="primary" onPress={saveStudent}>Save changes</Button></> : <><Button variant="light" onPress={closeModal}>Close</Button>{canDelete && <Button color="primary" variant="flat" startContent={<Pencil size={15} />} onPress={() => setEditingStudent(true)}>Edit details</Button>}</>}
       >
         {selectedStudent && (
-          editingStudent ? <div className="grid gap-4 sm:grid-cols-2">{([['name','Name','text'],['email','Email','email'],['phone','Phone','text'],['departmentCode','Department','text'],['batch','Batch','text'],['program','Program','text'],['year','Year','number'],['gpa','GPA','number']] as const).map(([key,label,type]) => <Input key={key} label={label} type={type} value={studentForm[key]} onValueChange={(value) => setStudentForm((current) => ({ ...current, [key]: value }))} />)}</div> : <div className="grid gap-4 sm:grid-cols-2">
+          editingStudent ? <div className="grid gap-4 sm:grid-cols-2">{([['name','Name','text'],['email','Email','email'],['phone','Phone','text'],['departmentCode','Department','text'],['batch','Batch','text'],['academicYear','Academic Year','text'],['program','Program','text'],['year','Year','number'],['gpa','GPA','number']] as const).map(([key,label,type]) => <Input key={key} label={label} type={type} value={studentForm[key]} onValueChange={(value) => setStudentForm((current) => ({ ...current, [key]: value }))} />)}</div> : <div className="grid gap-4 sm:grid-cols-2">
             <DetailField label="Name" value={selectedStudent.name} />
             <DetailField label="Student ID" value={selectedStudent.studentId} />
             <DetailField label="Email" value={selectedStudent.email} />
             <DetailField label="Department" value={selectedStudent.departmentCode ?? "—"} />
             <DetailField label="Batch" value={selectedStudent.batch ?? "—"} />
+            <DetailField label="Academic Year" value={selectedStudent.academicYear ?? "—"} />
             <DetailField label="Program" value={selectedStudent.program} />
             <DetailField
               label="Supervisor"

@@ -9,6 +9,8 @@ import { notifyError, notifySuccess } from "@/lib/notify";
 import {
   canStudentSubmitByInternshipStatus,
   formatDate,
+  getFortnightLabel,
+  getFortnightOf,
   internshipStatusSubmissionWarning,
   isValidReportPeriod,
   MAX_UPLOAD_BYTES,
@@ -50,7 +52,7 @@ export default function StudentReportsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [monthFilter, setMonthFilter] = useState("all");
+  const [fortnightFilter, setFortnightFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [newReport, setNewReport] = useState({ period: "", excerpt: "" });
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -60,24 +62,26 @@ export default function StudentReportsPage() {
   const [evaluation, setEvaluation] = useState<Record<string, unknown> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const monthOptions = useMemo(() => {
-    const keys = Array.from(new Set(reports.map((r) => r.monthKey))).sort().reverse();
+  // Interim reports are filtered per fortnight (two reporting periods per
+  // month: 1st–15th and 16th–month end) instead of per calendar month.
+  const fortnightOptions = useMemo(() => {
+    const keys = Array.from(
+      new Set(reports.map((r) => getFortnightOf(r.submittedAt)?.key).filter(Boolean) as string[])
+    ).sort().reverse();
     return [
-      { key: "all", label: "All Months" },
-      ...keys.map((k) => {
-        const report = reports.find((r) => r.monthKey === k);
-        return { key: k, label: report?.period ?? k };
-      }),
+      { key: "all", label: "All Fortnights" },
+      ...keys.map((k) => ({ key: k, label: getFortnightLabel(k) })),
     ];
   }, [reports]);
 
   const filtered = useMemo(() => {
     return reports.filter((r) => {
-      const matchesMonth = monthFilter === "all" || r.monthKey === monthFilter;
+      const fortnightKey = getFortnightOf(r.submittedAt)?.key ?? "";
+      const matchesFortnight = fortnightFilter === "all" || fortnightKey === fortnightFilter;
       const matchesStatus = statusFilter === "all" || r.status === statusFilter;
-      return matchesMonth && matchesStatus;
+      return matchesFortnight && matchesStatus;
     });
-  }, [reports, monthFilter, statusFilter]);
+  }, [reports, fortnightFilter, statusFilter]);
 
   const detailReport = reports.find((r) => r.id === selectedId) ?? null;
   const completed = reports.filter((r) => r.status === "accepted" || r.status === "reviewed").length;
@@ -252,14 +256,15 @@ export default function StudentReportsPage() {
       {activeTab === "fortnightly" && <>
       <div className="grid grid-cols-1 gap-3 rounded-card border border-border/60 bg-white p-4 shadow-card sm:grid-cols-2">
         <Select
-          label="Filter by Report"
-          selectedKeys={[monthFilter]}
-          onSelectionChange={(keys) => setMonthFilter((Array.from(keys)[0] as string) ?? "all")}
+          label="Filter by Fortnight"
+          selectedKeys={[fortnightFilter]}
+          onSelectionChange={(keys) => setFortnightFilter((Array.from(keys)[0] as string) ?? "all")}
           variant="bordered"
           radius="lg"
-          aria-label="Month filter"
+          aria-label="Fortnight filter"
+          description="Interim reports are filtered twice per month (1st–15th and 16th–month end)."
         >
-          {monthOptions.map((opt) => (
+          {fortnightOptions.map((opt) => (
             <SelectItem key={opt.key}>{opt.label}</SelectItem>
           ))}
         </Select>

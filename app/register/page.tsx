@@ -21,6 +21,16 @@ import type { UserRole } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+const academicYearOptions = [
+  "2020/2021",
+  "2021/2022",
+  "2022/2023",
+  "2023/2024",
+  "2024/2025",
+  "2025/2026",
+  "2026/2027",
+];
+
 export default function RegisterPage() {
   const [role, setRole] = useState<UserRole>("student");
   const [showPassword, setShowPassword] = useState(false);
@@ -78,6 +88,7 @@ export default function RegisterPage() {
         program: role === "student" ? formData.get("program") as string : null,
         year: role === "student" ? formData.get("year") as string : null,
         batch: role === "student" ? formData.get("batch") as string : null,
+        academic_year: role === "student" ? formData.get("academicYear") as string : null,
         title: role === "supervisor" || role === "external_supervisor" ? formData.get("title") as string : null,
       };
 
@@ -170,6 +181,11 @@ export default function RegisterPage() {
             <Select name="program" label="Program" variant="bordered" radius="lg" classNames={formFieldClassNames}>
               {degreePrograms.map((program) => (
                 <SelectItem key={program}>{program}</SelectItem>
+              ))}
+            </Select>
+            <Select name="academicYear" label="Academic Year" variant="bordered" radius="lg" classNames={formFieldClassNames}>
+              {academicYearOptions.map((academicYear) => (
+                <SelectItem key={academicYear}>{academicYear}</SelectItem>
               ))}
             </Select>
             <div className="grid grid-cols-2 gap-4">

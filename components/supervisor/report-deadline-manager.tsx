@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@heroui/react";
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -44,6 +44,7 @@ type ReportDeadline = {
 
 export function ReportDeadlineManager({ students }: { students: Student[] }) {
   const [deadlines, setDeadlines] = useState<ReportDeadline[]>([]);
+  const [academicYearFilter, setAcademicYearFilter] = useState("all");
   const [deadlineForm, setDeadlineForm] = useState({
     studentIds: [] as string[],
     monthNumber: "1",
@@ -54,8 +55,26 @@ export function ReportDeadlineManager({ students }: { students: Student[] }) {
 
   const studentIds = new Set(students.map((student) => student.id));
   const selectedStudents = students.filter((student) => deadlineForm.studentIds.includes(student.id));
-  const visibleDeadlines = deadlines.filter((deadline) => studentIds.has(deadline.student_id));
   const studentById = new Map(students.map((student) => [student.id, student]));
+
+  // Academic year filtering (e.g. 2020/2021). Students without an academic
+  // year are grouped under "Not set".
+  const academicYearOptions = useMemo(() => {
+    const years = Array.from(
+      new Set(students.map((student) => student.academicYear?.trim() || "Not set"))
+    ).sort((a, b) => b.localeCompare(a));
+    return ["all", ...years];
+  }, [students]);
+
+  const academicYearMatches = (studentId: string) => {
+    if (academicYearFilter === "all") return true;
+    const student = studentById.get(studentId);
+    return (student?.academicYear?.trim() || "Not set") === academicYearFilter;
+  };
+
+  const visibleDeadlines = deadlines.filter(
+    (deadline) => studentIds.has(deadline.student_id) && academicYearMatches(deadline.student_id)
+  );
 
   const loadDeadlines = async () => {
     try {
@@ -165,6 +184,25 @@ export function ReportDeadlineManager({ students }: { students: Student[] }) {
 
   return (
     <ContentCard title="Report Deadlines">
+      <div className="mb-5 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+        <Select
+          label="Filter by Academic Year"
+          selectedKeys={[academicYearFilter]}
+          onSelectionChange={(keys) => setAcademicYearFilter(String(Array.from(keys)[0] ?? "all"))}
+          variant="bordered"
+          radius="lg"
+          aria-label="Academic year filter"
+          className="max-w-xs"
+        >
+          {academicYearOptions.map((year) => (
+            <SelectItem key={year}>{year === "all" ? "All Academic Years" : year}</SelectItem>
+          ))}
+        </Select>
+        <p className="text-sm text-text-secondary">
+          Showing <span className="font-semibold text-primary">{visibleDeadlines.length}</span> of {deadlines.filter((deadline) => studentIds.has(deadline.student_id)).length} deadlines
+        </p>
+      </div>
+
       <div className="mb-5 grid gap-3 md:grid-cols-[1.4fr_0.7fr_1fr_auto] md:items-end">
         <Select
           label="Students"
@@ -220,6 +258,7 @@ export function ReportDeadlineManager({ students }: { students: Student[] }) {
         <TableHeader>
           <TableColumn>Student Name</TableColumn>
           <TableColumn>Student ID</TableColumn>
+          <TableColumn>Academic Year</TableColumn>
           <TableColumn>Report No.</TableColumn>
           <TableColumn>Deadline</TableColumn>
           <TableColumn>Current Status</TableColumn>
@@ -230,6 +269,7 @@ export function ReportDeadlineManager({ students }: { students: Student[] }) {
             <TableRow key={deadline.id}>
               <TableCell>{deadline.student_name ?? deadline.student_id}</TableCell>
               <TableCell>{studentById.get(deadline.student_id)?.studentId ?? "—"}</TableCell>
+              <TableCell>{studentById.get(deadline.student_id)?.academicYear ?? "—"}</TableCell>
               <TableCell>{deadline.month_number}</TableCell>
               <TableCell>{formatDate(deadline.due_date)}</TableCell>
               <TableCell>

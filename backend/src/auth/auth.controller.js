@@ -16,7 +16,7 @@ export const register = async (req, res) => {
 
   try {
 
-    const { name, email, password, role, student_id, department, program, year, batch, title } = req.body;
+    const { name, email, password, role, student_id, department, program, year, batch, title, academic_year, gender } = req.body;
 
     if (!['student', 'supervisor', 'external_supervisor'].includes(role)) {
       return res.status(400).json({ success: false, message: "A valid registration role is required" });
@@ -76,6 +76,8 @@ export const register = async (req, res) => {
       program: role === "student" ? program || null : null,
       year: role === "student" ? year || null : null,
       batch: role === "student" ? batch || null : null,
+      academic_year: role === "student" ? academic_year || null : null,
+      gender: role === "student" && ["Mr.", "Mrs."].includes(gender) ? gender : null,
       title: role === "supervisor" || role === "external_supervisor" ? title || null : null,
     };
 
