@@ -3,6 +3,7 @@
 import { Button, Checkbox, Input, Select, SelectItem, Textarea, Chip } from "@heroui/react";
 import { useAppStore } from "@/lib/store/app-store";
 import { filterTrainees, TraineeFilters } from "@/components/external-supervisor/trainee-filters";
+import { ApprovalAccessBanner } from "@/components/external-supervisor/approval-access-banner";
 import { apiCreateTrainingRecord, apiListTrainingRecords, apiUploadFile } from "@/lib/api";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { FileText, Upload } from "lucide-react";
@@ -119,6 +120,7 @@ export default function TrainingPage() {
 
   return <div className="space-y-6">
     <div><h1 className="ds-page-title">Training Overview</h1><p className="ds-page-description">Monitor attendance and certify completed training for assigned trainees.</p></div>
+    <ApprovalAccessBanner />
 
     <section className="space-y-4 rounded-card border border-border bg-white p-5">
       <h2 className="text-lg font-semibold">Attendance</h2>
@@ -147,9 +149,9 @@ export default function TrainingPage() {
       <div className="grid gap-4 sm:grid-cols-2"><Input label="Period from" type="date" value={periodFrom} onValueChange={setPeriodFrom}/><Input label="Period to" type="date" value={periodTo} onValueChange={setPeriodTo}/></div>
       <Input label="Departments" placeholder="Departments completed" value={departments} onValueChange={setDepartments}/>
       <div className="rounded-lg border border-dashed border-border p-4"><input ref={completionFileRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => { handleCompletionFile(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }}/><Button variant="bordered" startContent={<Upload size={16}/>} onPress={() => completionFileRef.current?.click()}>{completionFile ? "Replace certification PDF" : "Upload completion certification PDF"}</Button>{completionFile && <p className="mt-2 inline-flex items-center gap-2 text-sm text-text-secondary"><FileText size={15}/>{completionFile.name}</p>}</div>
-      <Checkbox isSelected={signed} onValueChange={setSigned}>I confirm that this completion certification is accurate.</Checkbox>
+      <Checkbox isDisabled={currentUser?.approvalAccess === false} isSelected={signed} onValueChange={setSigned}>I confirm that this completion certification is accurate.</Checkbox>
       {selectedCertification && <p className="text-sm text-text-secondary">Existing certification: {String(selectedCertification.completion_file_name ?? "PDF submitted")}.</p>}
-      <Button color="primary" onPress={() => void certify()}>Submit completion certification</Button>
+      <Button isDisabled={currentUser?.approvalAccess === false} color="primary" onPress={() => void certify()}>Submit completion certification</Button>
     </section>
   </div>;
 }

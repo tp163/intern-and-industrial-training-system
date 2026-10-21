@@ -61,6 +61,97 @@ router.post("/:resource", async (req, res) => {
   if (resource.table === "communication_messages") {
     payload.sender_id = req.user.id;
     delete payload.student_id;
+    // A communication log message is delivered to the training coordinator,
+    // the internal supervisor and the external supervisor at once. Resolve the
+    // recipient accounts server-side and insert one row per recipient.
+    const requestedRecipients = Array.isArray(req.body.recipients)
+      ? req.body.recipients.map(String)
+      : ["coordinator", "supervisor", "external_supervisor"];
+    const validRecipients = requestedRecipients.filter((r) =>
+      ["coordinator", "supervisor", "external_supervisor"].includes(r)
+    );
+    const targets = [];
+    const seen = new Set();
+
+    const pushTarget = (role, userId = null, email = null) => {
+      const key = `${role}:${userId ?? email ?? ""}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      targets.push({ role, userId, email });
+    };
+
+    try {
+      if (validRecipients.includes("coordinator")) {
+        const { data: admins, error: adminsError } = await supabase
+          .from("users")
+          .select("id, email")
+          .eq("role", "admin");
+        if (adminsError) return res.status(400).json({ success: false, message: adminsError.message });
+        (admins ?? []).forEach((admin) => pushTarget("coordinator", admin.id, admin.email));
+      }
+
+      if (validRecipients.includes("supervisor")) {
+        const { data: student, error: studentError } = await supabase
+          .from("users")
+          .select("supervisor_id")
+          .eq("id", req.user.id)
+          .single();
+        if (studentError) return res.status(400).json({ success: false, message: studentError.message });
+        if (student?.supervisor_id) {
+          const { data: supervisor, error: supervisorError } = await supabase
+            .from("users")
+            .select("id, email")
+            .eq("id", student.supervisor_id)
+            .maybeSingle();
+          if (supervisorError) return res.status(400).json({ success: false, message: supervisorError.message });
+          if (supervisor) pushTarget("supervisor", supervisor.id, supervisor.email);
+        }
+      }
+
+      if (validRecipients.includes("external_supervisor")) {
+        const { data: appointments, error: appointmentsError } = await supabase
+          .from("external_supervisor_appointments")
+          .select("external_supervisor_email, external_supervisor_name")
+          .eq("student_id", req.user.id)
+          .order("created_at", { ascending: false });
+        if (appointmentsError) return res.status(400).json({ success: false, message: appointmentsError.message });
+        const emails = Array.from(
+          new Set(
+            (appointments ?? [])
+              .map((appointment) => appointment.external_supervisor_email)
+              .filter(Boolean)
+              .map((email) => String(email).trim().toLowerCase())
+          )
+        );
+        for (const email of emails) {
+          const { data: externalUser, error: externalError } = await supabase
+            .from("users")
+            .select("id, email")
+            .eq("role", "external_supervisor")
+            .ilike("email", email)
+            .maybeSingle();
+          if (externalError) return res.status(400).json({ success: false, message: externalError.message });
+          // When the external supervisor has no account yet, keep the message
+          // addressed to their email so staff can still see it was sent.
+          pushTarget("external_supervisor", externalUser?.id ?? null, externalUser?.email ?? email);
+        }
+      }
+
+      const rows = (targets.length ? targets : [{ role: "coordinator", userId: null, email: null }]).map((target) => ({
+        sender_id: req.user.id,
+        recipient_id: target.userId,
+        recipient_role: target.role,
+        recipient_email: target.email,
+        subject: req.body.subject ?? null,
+        message: req.body.message,
+      }));
+
+      const { data, error } = await supabase.from("communication_messages").insert(rows).select();
+      if (error) return res.status(400).json({ success: false, message: error.message });
+      return res.status(201).json({ success: true, data: data ?? [], recipients: targets });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
   }
   const { data, error } = await supabase.from(resource.table).insert([payload]).select().single();
   if (error) return res.status(400).json({ success: false, message: error.message });

@@ -17,7 +17,6 @@ import {
   formFieldClassNames,
   getInitials,
   isValidEmail,
-  isValidGpa,
   isValidPhone,
 } from "@/lib/utils";
 import {
@@ -32,26 +31,7 @@ import { useState, useEffect } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-const yearOptions = [
-  { key: "1", label: "Year 1" },
-  { key: "2", label: "Year 2" },
-  { key: "3", label: "Year 3" },
-  { key: "4", label: "Year 4" },
-];
-const facultyOptions = ["Applied Sciences"];
-const departmentOptions = ["CMIS", "IMGT", "ELTN", "MATH & STAT"];
-const departmentOptionSet = new Set(departmentOptions);
-
-function getProfileFaculty(data?: Record<string, any> | null) {
-  if (!data) return "Applied Sciences";
-  return data.faculty || "Applied Sciences";
-}
-
-function getProfileDepartment(data?: Record<string, any> | null) {
-  if (!data) return "";
-  if (data.department_code) return data.department_code;
-  return departmentOptionSet.has(data.department) ? data.department : "";
-}
+const genderOptions = ["Mr.", "Mrs."];
 
 function getApiErrorMessage(error: unknown) {
   if (error instanceof TypeError && error.message === "fetch failed") {
@@ -68,18 +48,16 @@ export default function StudentProfilePage() {
     name: liveStudent?.name ?? currentUser?.name ?? "",
     email: liveStudent?.email ?? currentUser?.email ?? "",
     phone: liveStudent?.phone ?? "",
-    title: liveStudent?.title ?? currentUser?.title ?? "",
+    gender: liveStudent?.gender ?? "",
     studentId: liveStudent?.studentId ?? "",
     program: liveStudent?.program ?? "",
-    year: String(liveStudent?.year ?? ""),
-    gpa: liveStudent?.gpa?.toString() ?? "",
-    faculty: liveStudent?.faculty ?? "Applied Sciences",
-    department: liveStudent?.departmentCode ?? (departmentOptionSet.has(liveStudent?.department ?? "") ? liveStudent?.department ?? "" : ""),
   });
   const [internshipForm, setInternshipForm] = useState({
     internshipStatus: (liveStudent?.internshipStatus ?? "pending") as InternshipPlacementStatus,
     internshipCompany: liveStudent?.internshipCompany ?? "",
     internshipRole: liveStudent?.internshipRole ?? "",
+    startDate: liveStudent?.internshipStartDate ?? "",
+    endDate: liveStudent?.internshipEndDate ?? "",
     monthsCompleted: String(liveStudent?.internshipMonthsCompleted ?? 0),
     totalMonths: String(liveStudent?.internshipTotalMonths ?? DEFAULT_INTERNSHIP_TOTAL_MONTHS),
   });
@@ -103,22 +81,18 @@ export default function StudentProfilePage() {
       try {
         const response = await authFetch(`${API_BASE}/users/${userId}`);
         const result = await response.json();
-          
+
         if (!response.ok || !result.success) throw new Error(result.message || "Failed to load");
-        
+
         const data = result.data;
         if (data) {
           setForm({
             name: data.name || "",
             email: data.email || "",
             phone: data.phone || "",
-            title: data.title || "",
+            gender: data.gender || "",
             studentId: data.student_id || "",
             program: data.program || "",
-            year: String(data.year || ""),
-            gpa: data.gpa?.toString() || "",
-            faculty: getProfileFaculty(data),
-            department: getProfileDepartment(data),
           });
           const perms = getInternshipPermissions(data.permissions);
           const progress = getInternshipProgress(
@@ -129,6 +103,8 @@ export default function StudentProfilePage() {
             internshipStatus: (data.internship_status || "pending") as InternshipPlacementStatus,
             internshipCompany: data.internship_company || "",
             internshipRole: data.internship_role || "",
+            startDate: data.internship_start_date ? String(data.internship_start_date).slice(0, 10) : "",
+            endDate: data.internship_end_date ? String(data.internship_end_date).slice(0, 10) : "",
             monthsCompleted: String(progress.monthsCompleted),
             totalMonths: String(progress.totalMonths),
           });
@@ -145,7 +121,7 @@ export default function StudentProfilePage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
-    
+
     try {
       if (!isValidEmail(form.email)) {
         notifyError("Please enter a valid email address with @ sign.");
@@ -156,10 +132,6 @@ export default function StudentProfilePage() {
         notifyError("Phone number must be exactly 10 numbers.");
         return;
       }
-      if (form.gpa && !isValidGpa(form.gpa)) {
-        notifyError("GPA must be between 0.00 and 4.00 with up to 2 decimal places.");
-        return;
-      }
 
       const response = await authFetch(`${API_BASE}/users/${userId}`, {
         method: "PUT",
@@ -168,23 +140,14 @@ export default function StudentProfilePage() {
           name: form.name,
           email: form.email,
           phone: form.phone,
-          title: form.title,
           program: form.program,
-          year: Number(form.year) || null,
-          gpa: form.gpa ? Number(form.gpa) : null,
-          faculty: form.faculty,
-          department: form.department,
-          department_code: form.department,
+          gender: form.gender || null,
         })
       });
 
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message);
       const saved = result.data ?? {};
-      const savedYear = Number(saved.year ?? form.year) || liveStudent?.year || 1;
-      const savedGpa = saved.gpa != null && saved.gpa !== "" ? Number(saved.gpa) : undefined;
-      const savedFaculty = getProfileFaculty(saved);
-      const savedDepartment = getProfileDepartment(saved) || form.department;
 
       updateStudentRecord(
         userId,
@@ -192,27 +155,17 @@ export default function StudentProfilePage() {
           name: saved.name ?? form.name,
           email: saved.email ?? form.email,
           phone: saved.phone ?? form.phone,
-          title: saved.title ?? form.title,
           program: saved.program ?? form.program,
-          year: savedYear,
-          gpa: savedGpa,
-          faculty: savedFaculty,
-          department: saved.department ?? savedDepartment,
-          departmentCode: savedDepartment,
+          gender: saved.gender ?? form.gender,
         },
-        "personal and academic profile information"
+        "personal profile information"
       );
       updateCurrentUser({
         name: saved.name ?? form.name,
         email: saved.email ?? form.email,
         phone: saved.phone ?? form.phone,
-        title: saved.title ?? form.title,
-        faculty: savedFaculty,
-        department: saved.department ?? savedDepartment,
-        departmentCode: savedDepartment,
         program: saved.program ?? form.program,
-        year: savedYear,
-        gpa: savedGpa,
+        gender: saved.gender ?? form.gender,
       });
       notifySuccess("Profile updated successfully.");
     } catch (err: unknown) {
@@ -240,7 +193,15 @@ export default function StudentProfilePage() {
         notifyError("Total internship duration must be between 1 and 24 months.");
         return;
       }
-      
+      if (
+        internshipForm.startDate &&
+        internshipForm.endDate &&
+        internshipForm.startDate > internshipForm.endDate
+      ) {
+        notifyError("Internship duration start date cannot be after the end date.");
+        return;
+      }
+
       // Check if trying to update company or role without active status
       const isChangingToActive = internshipForm.internshipStatus === "active";
       const hasCompanyOrRole = internshipForm.internshipCompany?.trim() || internshipForm.internshipRole?.trim();
@@ -256,6 +217,8 @@ export default function StudentProfilePage() {
           internship_status: internshipForm.internshipStatus,
           internship_company: internshipForm.internshipCompany,
           internship_role: internshipForm.internshipRole,
+          internship_start_date: internshipForm.startDate || null,
+          internship_end_date: internshipForm.endDate || null,
           permissions: {
             internship_months_completed: monthsCompleted,
             internship_total_months: totalMonths,
@@ -276,6 +239,8 @@ export default function StudentProfilePage() {
         internshipStatus: saved.internship_status ?? form.internshipStatus,
         internshipCompany: saved.internship_company ?? form.internshipCompany,
         internshipRole: saved.internship_role ?? form.internshipRole,
+        startDate: saved.internship_start_date ? String(saved.internship_start_date).slice(0, 10) : form.startDate,
+        endDate: saved.internship_end_date ? String(saved.internship_end_date).slice(0, 10) : form.endDate,
         monthsCompleted: String(savedProgress.monthsCompleted),
         totalMonths: String(savedProgress.totalMonths),
       }));
@@ -286,6 +251,12 @@ export default function StudentProfilePage() {
           internshipStatus: saved.internship_status ?? internshipForm.internshipStatus,
           internshipCompany: saved.internship_company || undefined,
           internshipRole: saved.internship_role || undefined,
+          internshipStartDate: saved.internship_start_date
+            ? String(saved.internship_start_date).slice(0, 10)
+            : internshipForm.startDate || undefined,
+          internshipEndDate: saved.internship_end_date
+            ? String(saved.internship_end_date).slice(0, 10)
+            : internshipForm.endDate || undefined,
           internshipMonthsCompleted: savedProgress.monthsCompleted,
           internshipTotalMonths: savedProgress.totalMonths,
         },
@@ -295,6 +266,12 @@ export default function StudentProfilePage() {
         internshipStatus: saved.internship_status ?? internshipForm.internshipStatus,
         internshipCompany: saved.internship_company || undefined,
         internshipRole: saved.internship_role || undefined,
+        internshipStartDate: saved.internship_start_date
+          ? String(saved.internship_start_date).slice(0, 10)
+          : internshipForm.startDate || undefined,
+        internshipEndDate: saved.internship_end_date
+          ? String(saved.internship_end_date).slice(0, 10)
+          : internshipForm.endDate || undefined,
       });
       notifySuccess("Internship details updated.");
     } catch (err: unknown) {
@@ -309,7 +286,7 @@ export default function StudentProfilePage() {
     <div className="space-y-6">
       <PortalPageHeader
         title="My Profile"
-        description="Update your personal and academic information"
+        description="Update your personal information"
       />
 
       <ContentCard>
@@ -363,15 +340,6 @@ export default function StudentProfilePage() {
               errorMessage="Phone number must be exactly 10 numbers."
             />
             <Input
-              label="Title"
-              value={form.title}
-              onValueChange={(v) => update("title", v)}
-              placeholder="e.g. Student Intern"
-              variant="bordered"
-              radius="lg"
-              classNames={formFieldClassNames}
-            />
-            <Input
               label="Student ID"
               value={form.studentId}
               isReadOnly
@@ -395,62 +363,19 @@ export default function StudentProfilePage() {
               ))}
             </Select>
             <Select
-              label="Year"
-              placeholder="Select year"
-              selectedKeys={form.year ? [form.year] : []}
+              label="Gender"
+              placeholder="Select gender"
+              selectedKeys={form.gender ? [form.gender] : []}
               onSelectionChange={(keys) => {
                 const selected = Array.from(keys)[0] as string;
-                if (selected) update("year", selected);
+                if (selected) update("gender", selected);
               }}
               variant="bordered"
               radius="lg"
               classNames={formFieldClassNames}
             >
-              {yearOptions.map((year) => (
-                <SelectItem key={year.key} textValue={year.label}>
-                  {year.label}
-                </SelectItem>
-              ))}
-            </Select>
-            <Input
-              label="GPA"
-              value={form.gpa}
-              onValueChange={(v) => update("gpa", v)}
-              variant="bordered"
-              radius="lg"
-              classNames={formFieldClassNames}
-              placeholder="e.g. 3.75"
-              isInvalid={!!form.gpa && !isValidGpa(form.gpa)}
-              errorMessage="GPA must be 0.00 to 4.00."
-            />
-            <Select
-              label="Faculty"
-              selectedKeys={[form.faculty]}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0] as string;
-                if (selected) update("faculty", selected);
-              }}
-              variant="bordered"
-              radius="lg"
-              classNames={formFieldClassNames}
-            >
-              {facultyOptions.map((faculty) => (
-                <SelectItem key={faculty}>{faculty}</SelectItem>
-              ))}
-            </Select>
-            <Select
-              label="Department"
-              selectedKeys={form.department ? [form.department] : []}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0] as string;
-                if (selected) update("department", selected);
-              }}
-              variant="bordered"
-              radius="lg"
-              classNames={formFieldClassNames}
-            >
-              {departmentOptions.map((department) => (
-                <SelectItem key={department}>{department}</SelectItem>
+              {genderOptions.map((gender) => (
+                <SelectItem key={gender}>{gender}</SelectItem>
               ))}
             </Select>
           </div>
@@ -509,6 +434,30 @@ export default function StudentProfilePage() {
               radius="lg"
               classNames={formFieldClassNames}
               className="md:col-span-2"
+            />
+            <Input
+              label="Internship Duration – From"
+              type="date"
+              value={internshipForm.startDate}
+              onValueChange={(v) => setInternshipForm((f) => ({ ...f, startDate: v }))}
+              variant="bordered"
+              radius="lg"
+              classNames={formFieldClassNames}
+            />
+            <Input
+              label="Internship Duration – To"
+              type="date"
+              value={internshipForm.endDate}
+              onValueChange={(v) => setInternshipForm((f) => ({ ...f, endDate: v }))}
+              variant="bordered"
+              radius="lg"
+              classNames={formFieldClassNames}
+              isInvalid={
+                !!internshipForm.startDate &&
+                !!internshipForm.endDate &&
+                internshipForm.startDate > internshipForm.endDate
+              }
+              errorMessage="End date cannot be before the start date."
             />
           </div>
 

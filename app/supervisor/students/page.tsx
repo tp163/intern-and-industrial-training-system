@@ -205,7 +205,7 @@ export default function SupervisorStudentsPage() {
               <TableColumn>STUDENT</TableColumn>
               <TableColumn className="hidden sm:table-cell">STUDENT ID</TableColumn>
               <TableColumn>DEPARTMENT</TableColumn>
-              <TableColumn className="hidden md:table-cell">BATCH</TableColumn>
+              <TableColumn className="hidden md:table-cell">ACADEMIC YEAR</TableColumn>
               <TableColumn>STATUS</TableColumn>
               <TableColumn>ACTIONS</TableColumn>
             </TableHeader>
@@ -230,7 +230,7 @@ export default function SupervisorStudentsPage() {
                     {student.studentId}
                   </TableCell>
                   <TableCell>{student.departmentCode ?? student.program}</TableCell>
-                  <TableCell className="hidden md:table-cell">{student.batch ?? "—"}</TableCell>
+                  <TableCell className="hidden md:table-cell">{student.academicYear ?? student.batch ?? "—"}</TableCell>
                   <TableCell>
                     {student.internshipStatus ? (
                       <InternshipStatusPill status={student.internshipStatus} />
@@ -278,15 +278,13 @@ export default function SupervisorStudentsPage() {
                 <ProfileField label="Phone" value={selectedStudent.phone ?? "—"} />
                 <ProfileField label="Department" value={selectedStudent.departmentCode ?? "—"} />
                 <ProfileField label="Program" value={selectedStudent.program} />
-                <ProfileField label="Batch" value={selectedStudent.batch ?? "—"} />
-                <ProfileField label="Year" value={`Year ${selectedStudent.year}`} />
-                <ProfileField label="GPA" value={selectedStudent.gpa?.toString() ?? "—"} />
+                <ProfileField label="Academic Year" value={selectedStudent.academicYear ?? selectedStudent.batch ?? "—"} />
               </div>
             </section>
 
             <section className="space-y-4">
               <div><h3 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">Site Visits</h3><p className="mt-1 text-sm text-text-secondary">Schedule a visit or record the completed visit for this student.</p></div>
-              <div className="grid gap-4 sm:grid-cols-2"><Input label="Proposed date" type="date" value={visit.proposedDate} onValueChange={(proposedDate) => setVisit({ ...visit, proposedDate })}/><Input label="Actual date" type="date" value={visit.actualDate} onValueChange={(actualDate) => setVisit({ ...visit, actualDate })}/><Select label="Mode" selectedKeys={[visit.mode]} onSelectionChange={(keys) => setVisit({ ...visit, mode: String(Array.from(keys)[0]) })}><SelectItem key="On site">On site</SelectItem><SelectItem key="Virtual">Virtual</SelectItem></Select></div>
+              <div className="grid gap-4 sm:grid-cols-2"><Input label="Proposed date" type="date" value={visit.proposedDate} onValueChange={(proposedDate) => setVisit({ ...visit, proposedDate })}/><Input label="Actual date" type="date" value={visit.actualDate} onValueChange={(actualDate) => setVisit({ ...visit, actualDate })}/><Select label="Mode" selectedKeys={[visit.mode]} onSelectionChange={(keys) => setVisit({ ...visit, mode: String(Array.from(keys)[0]) })}><SelectItem key="On site">On site</SelectItem><SelectItem key="Virtual">Virtual</SelectItem><SelectItem key="Hybrid">Hybrid</SelectItem></Select></div>
               <Textarea label="Observations" value={visit.observations} onValueChange={(observations) => setVisit({ ...visit, observations })}/><Textarea label="Actions recommended" value={visit.actions} onValueChange={(actions) => setVisit({ ...visit, actions })}/><Textarea label="Provider feedback (optional)" value={visit.providerFeedback} onValueChange={(providerFeedback) => setVisit({ ...visit, providerFeedback })}/><Button color="primary" onPress={saveVisit}>Schedule / save visit</Button>
               <div className="space-y-2"><h4 className="text-sm font-semibold">Visit history</h4>{visits.length === 0 ? <p className="text-sm text-text-secondary">No visits recorded yet.</p> : visits.map((item) => <div key={String(item.id)} className="rounded-button bg-surface-muted p-3 text-sm"><p className="font-medium">{String(item.status ?? "scheduled")} · {String(item.proposed_date ?? "No date")}</p><p className="text-text-secondary">{String(item.observations ?? "No observations")}</p></div>)}</div>
             </section>
@@ -328,6 +326,14 @@ export default function SupervisorStudentsPage() {
                   value={selectedStudent.internshipCompany ?? "—"}
                 />
                 <ProfileField label="Role" value={selectedStudent.internshipRole ?? "—"} />
+                <ProfileField
+                  label="Internship Duration"
+                  value={
+                    selectedStudent.internshipStartDate || selectedStudent.internshipEndDate
+                      ? `${selectedStudent.internshipStartDate ?? "—"} to ${selectedStudent.internshipEndDate ?? "—"}`
+                      : "—"
+                  }
+                />
                 <div>
                   <p className="text-xs font-semibold uppercase text-text-secondary">Placement Status</p>
                   <div className="mt-2">

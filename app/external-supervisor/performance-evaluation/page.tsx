@@ -3,12 +3,14 @@
 import { Button, Chip, Input, Select, SelectItem, Textarea } from "@heroui/react";
 import { useAppStore } from "@/lib/store/app-store";
 import { filterTrainees, TraineeFilters } from "@/components/external-supervisor/trainee-filters";
+import { ApprovalAccessBanner } from "@/components/external-supervisor/approval-access-banner";
 import { apiCreateTrainingRecord, apiListTrainingRecords, apiUpdateTrainingRecord } from "@/lib/api";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { useEffect, useMemo, useState } from "react";
 
 export default function PerformanceEvaluationPage() {
   const { students, currentUser } = useAppStore();
+  const approvalAccess = currentUser?.approvalAccess !== false;
   const [student, setStudent] = useState("");
   const [score, setScore] = useState("");
   const [comments, setComments] = useState("");
@@ -64,19 +66,20 @@ export default function PerformanceEvaluationPage() {
     <div className="space-y-5">
       <h1 className="ds-page-title">Performance Evaluation</h1>
       <p className="ds-page-description">Submit the final performance assessment for a trainee.</p>
+      <ApprovalAccessBanner />
       <div className="space-y-4 rounded-card border border-border bg-white p-5">
         <TraineeFilters students={students} search={traineeSearch} department={traineeDepartment} batch={traineeBatch} onSearchChange={setTraineeSearch} onDepartmentChange={setTraineeDepartment} onBatchChange={setTraineeBatch} />
-        <Select label="Trainee" placeholder="Select trainee" selectedKeys={student ? [student] : []} onSelectionChange={(keys) => setStudent(String(Array.from(keys)[0] ?? ""))} renderValue={() => students.find((item) => item.id === student)?.name ?? "Select trainee"}>
+        <Select isDisabled={!approvalAccess} label="Trainee" placeholder="Select trainee" selectedKeys={student ? [student] : []} onSelectionChange={(keys) => setStudent(String(Array.from(keys)[0] ?? ""))} renderValue={() => students.find((item) => item.id === student)?.name ?? "Select trainee"}>
           {filteredStudents.map((item) => <SelectItem key={item.id} textValue={`${item.name} (${item.studentId})`}>{item.name} ({item.studentId})</SelectItem>)}
         </Select>
-        <Input label="Final score (0-100)" type="number" min="0" max="100" value={score} onValueChange={setScore} />
-        <Select label="Evaluation status" selectedKeys={[status]} onSelectionChange={(keys) => setStatus(String(Array.from(keys)[0] ?? "pending_review"))}>
+        <Input isDisabled={!approvalAccess} label="Final score (0-100)" type="number" min="0" max="100" value={score} onValueChange={setScore} />
+        <Select isDisabled={!approvalAccess} label="Evaluation status" selectedKeys={[status]} onSelectionChange={(keys) => setStatus(String(Array.from(keys)[0] ?? "pending_review"))}>
           <SelectItem key="pending_review">Pending review</SelectItem>
           <SelectItem key="rejected">Rejected</SelectItem>
           <SelectItem key="accepted">Accepted</SelectItem>
         </Select>
-        <Textarea label="Final comments" value={comments} onValueChange={setComments} minRows={5} />
-        <Button color="primary" onPress={() => void submit()}>{selected ? "Update evaluation" : "Submit evaluation"}</Button>
+        <Textarea isDisabled={!approvalAccess} label="Final comments" value={comments} onValueChange={setComments} minRows={5} />
+        <Button isDisabled={!approvalAccess} color="primary" onPress={() => void submit()}>{selected ? "Update evaluation" : "Submit evaluation"}</Button>
       </div>
       <div className="space-y-3">
         <h2 className="text-lg font-semibold">Evaluation history</h2>

@@ -1,18 +1,19 @@
-<<<<<<< HEAD
-# Intern & Industrial Training System (Frontend)
+# Intern & Industrial Training System
 
-A frontend-only Next.js 15 application for managing internships, applications, and industrial training progress.
+A web-based platform that connects university students with companies offering internships and
+training opportunities. Students can create profiles, upload CVs, maintain their daily logbook,
+and apply for vacancies, while supervisors, coordinators and external supervisors manage
+recruitment, monitor training progress and evaluate performance through a centralized system.
 
 ## Tech Stack
 
-- Next.js 15 (App Router)
-- HeroUI
-- Tailwind CSS
+- Next.js 15 (App Router) + React 19
+- HeroUI + Tailwind CSS
 - TypeScript
-- Lucide Icons
-- next-themes (dark/light mode)
+- Express backend (see `backend/`)
+- Supabase (database, storage)
 
-## Getting Started
+## Getting Started (frontend)
 
 ```bash
 npm install --legacy-peer-deps
@@ -21,9 +22,20 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-## Login (Mock)
+## Getting Started (backend)
 
-Use the login page and select a role (Student, Supervisor, or Admin). Any credentials work — you'll be redirected to the matching dashboard.
+```bash
+cd backend
+npm install
+cp .env.example .env   # configure SUPABASE_URL / SUPABASE_SERVICE_KEY
+npm run dev
+```
+
+Apply the SQL migrations in `backend/sql/` (in order) to keep the database schema in sync.
+
+## Login
+
+Use the login page and select a role (Student, Supervisor, External Supervisor, or Admin).
 
 ## Routes
 
@@ -38,12 +50,24 @@ Use the login page and select a role (Student, Supervisor, or Admin). Any creden
 - `/student/cv`
 - `/student/applications`
 - `/student/internships`
+- `/student/daily-log`
+- `/student/reports`
+- `/student/conduct`
+- `/student/documents`
 
 ### Supervisor
 - `/supervisor/dashboard`
 - `/supervisor/students`
+- `/supervisor/daily-logs`
+- `/supervisor/evaluations`
 - `/supervisor/reviews`
 - `/supervisor/reports`
+
+### External Supervisor
+- `/external-supervisor/training`
+- `/external-supervisor/weekly-certification`
+- `/external-supervisor/monthly-progress`
+- `/external-supervisor/performance-evaluation`
 
 ### Admin
 - `/admin/dashboard`
@@ -52,6 +76,9 @@ Use the login page and select a role (Student, Supervisor, or Admin). Any creden
 - `/admin/companies`
 - `/admin/internships`
 - `/admin/reports`
+- `/admin/training-monitoring`
+- `/admin/training-documents`
+- `/admin/conduct-review`
 - `/admin/settings`
 
 ## Project Structure
@@ -59,22 +86,13 @@ Use the login page and select a role (Student, Supervisor, or Admin). Any creden
 ```
 app/           # Next.js App Router pages
 components/    # Reusable UI components
-data/          # Mock JSON data
-lib/           # Utilities and navigation config
+backend/       # Express API + Supabase integration
+lib/           # Utilities, store, navigation config
 types/         # TypeScript types
-public/        # Static assets
+public/        # Static assets (official forms, etc.)
 ```
-
-## Notes
-
-- Frontend only — no backend or API
-- All data is mocked in `data/mock.ts`
-- Match Figma spacing/colors using Dev Mode and update `tailwind.config.ts` as needed
 
 ## Windows Path Note
 
-If your project folder contains `&` in the name, npm scripts use direct `node` paths to avoid Windows shell issues.
-=======
-# Intern-Industrial-Training-Portal
-The Intern and Industrial Training System is a web-based platform that connects university students with companies offering internships and training opportunities. Students can create profiles, upload CVs, and apply for vacancies, while companies can post opportunities, search candidates, and manage recruitment through a centralized system.
->>>>>>> dfd6de926376bf1fdb6ffc82b0d673cc361b0829
+If your project folder contains `&` in the name, npm scripts use direct `node` paths to avoid
+Windows shell issues.

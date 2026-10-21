@@ -3,12 +3,14 @@
 import { Button, Select, SelectItem, Textarea } from "@heroui/react";
 import { useAppStore } from "@/lib/store/app-store";
 import { filterTrainees, TraineeFilters } from "@/components/external-supervisor/trainee-filters";
+import { ApprovalAccessBanner } from "@/components/external-supervisor/approval-access-banner";
 import { apiListTrainingRecords, apiUpdateTrainingRecord } from "@/lib/api";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { useEffect, useMemo, useState } from "react";
 
 export default function WeeklyCertificationPage() {
-  const { students } = useAppStore();
+  const { students, currentUser } = useAppStore();
+  const approvalAccess = currentUser?.approvalAccess !== false;
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [remarks, setRemarks] = useState<Record<string, string>>({});
   const [studentFilter, setStudentFilter] = useState("all");
@@ -41,10 +43,11 @@ export default function WeeklyCertificationPage() {
 
   return <div className="space-y-5">
     <h1 className="ds-page-title">Weekly Certification</h1>
+    <ApprovalAccessBanner />
     <TraineeFilters students={students} search={traineeSearch} department={traineeDepartment} batch={traineeBatch} onSearchChange={setTraineeSearch} onDepartmentChange={setTraineeDepartment} onBatchChange={setTraineeBatch} />
     <Select label="Trainee" items={studentOptions} selectedKeys={[studentFilter]} onSelectionChange={(keys) => setStudentFilter(String(Array.from(keys)[0] ?? "all"))} renderValue={() => studentFilter === "all" ? "All trainees" : students.find((student) => student.id === studentFilter)?.name ?? "Select trainee"}>
       {(student) => <SelectItem key={student.id} textValue={`${student.name} ${student.studentId}`}>{student.name}{student.studentId ? ` (${student.studentId})` : ""}</SelectItem>}
     </Select>
-    {filtered.length === 0 ? <p className="text-text-secondary">No weekly certifications submitted yet.</p> : filtered.map((item) => <div key={String(item.id)} className="space-y-3 rounded-card border border-border bg-white p-5"><p className="font-semibold">{students.find((student) => student.id === String(item.student_id))?.name ?? "Trainee"} · Week: {String(item.week_start_date)} – {String(item.week_end_date)}</p><p className="text-sm">Status: {String(item.status)}</p>{Boolean(item.file_url) && <a className="text-sm text-primary underline" href={String(item.file_url)} target="_blank" rel="noreferrer">View weekly certification PDF</a>}<Textarea label="External supervisor remarks" value={remarks[String(item.id)] ?? String(item.external_supervisor_feedback ?? "")} onValueChange={(value) => setRemarks({ ...remarks, [String(item.id)]: value })}/><div className="flex gap-2"><Button color="success" onPress={() => void update(item, "certified")}>Approve</Button><Button color="danger" variant="flat" onPress={() => void update(item, "revision_required")}>Request revision</Button></div></div>)}
+    {filtered.length === 0 ? <p className="text-text-secondary">No weekly certifications submitted yet.</p> : filtered.map((item) => <div key={String(item.id)} className="space-y-3 rounded-card border border-border bg-white p-5"><p className="font-semibold">{students.find((student) => student.id === String(item.student_id))?.name ?? "Trainee"} · Week: {String(item.week_start_date)} – {String(item.week_end_date)}</p><p className="text-sm">Status: {String(item.status)}</p>{Boolean(item.file_url) && <a className="text-sm text-primary underline" href={String(item.file_url)} target="_blank" rel="noreferrer">View weekly certification PDF</a>}<Textarea isDisabled={!approvalAccess} label="External supervisor remarks" value={remarks[String(item.id)] ?? String(item.external_supervisor_feedback ?? "")} onValueChange={(value) => setRemarks({ ...remarks, [String(item.id)]: value })}/><div className="flex gap-2"><Button isDisabled={!approvalAccess} color="success" onPress={() => void update(item, "certified")}>Approve</Button><Button isDisabled={!approvalAccess} color="danger" variant="flat" onPress={() => void update(item, "revision_required")}>Request revision</Button></div></div>)}
   </div>;
 }

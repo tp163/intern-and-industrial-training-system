@@ -17,6 +17,10 @@ export type SessionUser = {
   batch?: string;
   phone?: string;
   faculty?: string;
+  gender?: string;
+  academicYear?: string;
+  internshipStartDate?: string;
+  internshipEndDate?: string;
   internshipStatus?: string;
   internshipCompany?: string;
   internshipRole?: string;
@@ -24,6 +28,8 @@ export type SessionUser = {
   // supervisor
   title?: string;
   assignedStudents?: number;
+  // external supervisor
+  approvalAccess?: boolean;
   // admin
   permissions?: string[];
 };
@@ -84,12 +90,17 @@ export function mapDbUser(db: Record<string, unknown>): SessionUser {
     batch: (db.batch ?? undefined) as string | undefined,
     phone: (db.phone ?? undefined) as string | undefined,
     faculty: (db.faculty ?? undefined) as string | undefined,
+    gender: (db.gender ?? undefined) as string | undefined,
+    academicYear: (db.academic_year ?? undefined) as string | undefined,
+    internshipStartDate: (db.internship_start_date ?? undefined) as string | undefined,
+    internshipEndDate: (db.internship_end_date ?? undefined) as string | undefined,
     internshipStatus: (db.internship_status ?? undefined) as string | undefined,
     internshipCompany: (db.internship_company ?? undefined) as string | undefined,
     internshipRole: (db.internship_role ?? undefined) as string | undefined,
     cvFileName: (db.cv_file_name ?? undefined) as string | undefined,
     title: (db.title ?? undefined) as string | undefined,
     assignedStudents: (db.assigned_students ?? undefined) as number | undefined,
+    approvalAccess: db.approval_access === false ? false : true,
     permissions: (db.permissions ?? undefined) as string[] | undefined,
   };
 }
